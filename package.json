@@ -1,0 +1,35 @@
+{
+  "name": "gold-tracker-crawler",
+  "version": "1.0.0",
+  "description": "Gold price crawler - writes price data to database",
+  "main": "src/scheduler.ts",
+  "scripts": {
+    "start": "tsx src/scheduler.ts",
+    "dev": "tsx watch src/scheduler.ts",
+    "once": "tsx src/run-once.ts",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:seed": "tsx prisma/seed.ts",
+    "prisma:sample-data": "tsx prisma/generate-sample-data.ts",
+    "prisma:deploy": "prisma migrate deploy",
+    "prisma:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "axios": "^1.7.9",
+    "fast-xml-parser": "^4.5.0",
+    "dayjs": "^1.11.10",
+    "cheerio": "^1.0.0",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "@types/node-cron": "^3.0.11",
+    "prisma": "^5.22.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}
