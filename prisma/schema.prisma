@@ -117,20 +117,21 @@ model CrawlerLog {
 }
 
 model News {
-  id         Int      @id @default(autoincrement())
-  headlineEn String
-  headlineVi String?
-  slugVi     String   @unique
-  slugEn     String   @unique
-  shortEn    String?  @db.Text
-  shortVi    String?  @db.Text
-  contentEn  String   @db.Text
-  contentVi  String?  @db.Text
-  detailLink String   @unique
-  pageCited  String // 'Kitco', 'DailyForex', 'MarketWatch'
-  hash       String   @unique
-  active     Boolean  @default(false) // false = not published, true = published
-  createdAt  DateTime @default(now())
+  id          Int       @id @default(autoincrement())
+  headlineEn  String
+  headlineVi  String?
+  slugVi      String    @unique
+  slugEn      String    @unique
+  shortEn     String?   @db.Text
+  shortVi     String?   @db.Text
+  contentEn   String    @db.Text
+  contentVi   String?   @db.Text
+  detailLink  String    @unique
+  pageCited   String // 'Kitco', 'DailyForex', 'MarketWatch'
+  hash        String    @unique
+  active      Boolean   @default(false) // false = not published, true = published
+  publishedAt DateTime? // Original publication date
+  createdAt   DateTime  @default(now())
 
   @@index([pageCited])
   @@index([active])
