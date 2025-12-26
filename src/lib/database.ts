@@ -1,9 +1,8 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
-
 export class CrawlerDatabaseService {
-  
+
   /**
    * Save crawled price data to GoldDailyPrice
    */
@@ -39,6 +38,7 @@ export class CrawlerDatabaseService {
         data: {
           storeId: store.id,
           goldTypeId: goldType.id,
+          isChart: goldType.isChart,
           buyPrice: new Prisma.Decimal(data.buyPrice),
           sellPrice: new Prisma.Decimal(data.sellPrice),
           dailyCode: data.dailyCode,
@@ -95,7 +95,8 @@ export class CrawlerDatabaseService {
           timestamp: {
             gte: startOfDay,
             lte: endOfDay,
-          }
+          },
+          isChart: true
         },
         include: {
           store: true,
@@ -124,7 +125,7 @@ export class CrawlerDatabaseService {
       let archived = 0;
       for (const [key, prices] of Object.entries(grouped)) {
         const [storeId, goldTypeId] = key.split('-').map(Number);
-        
+
         const buyPrices = prices.map(p => Number(p.buyPrice));
         const sellPrices = prices.map(p => Number(p.sellPrice));
 
@@ -141,7 +142,7 @@ export class CrawlerDatabaseService {
 
         const previousDay = new Date(startOfDay);
         previousDay.setDate(previousDay.getDate() - 1);
-        
+
         const prevPrice = await prisma.goldPrice.findFirst({
           where: {
             storeId,
@@ -150,10 +151,10 @@ export class CrawlerDatabaseService {
           }
         });
 
-        const changeAmount = prevPrice 
+        const changeAmount = prevPrice
           ? closeSell - Number(prevPrice.closeSell)
           : 0;
-        
+
         const changePercent = prevPrice && Number(prevPrice.closeSell) > 0
           ? (changeAmount / Number(prevPrice.closeSell)) * 100
           : 0;

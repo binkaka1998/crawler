@@ -1,10 +1,7 @@
 import axios from 'axios';
-import { XMLParser } from 'fast-xml-parser';
-import { PrismaClient, Prisma } from '@prisma/client';
-import { BTMCGoldTypeCode } from '../util/BTMCGoldTypeCode';
-import { buildDailyCode } from '../util/daily-code-generator';
+import { prisma } from '../lib/prisma';
+import { buildDailyCode, normalizeGoldCode } from '../util/utilFunctions';
 
-const prisma = new PrismaClient();
 export interface CrawledPrice {
     storeId: number;
     goldTypeId: number;
@@ -12,6 +9,7 @@ export interface CrawledPrice {
     sellPrice: number;
     dailyCode: string;
 }
+
 export class BTMCCrawler {
     private storeCode = 'BTMC';
     private apiUrl =
@@ -19,78 +17,80 @@ export class BTMCCrawler {
 
     async crawl(): Promise<CrawledPrice[]> {
         console.log('[BTMC] Fetching XML data...');
+
         const prices: CrawledPrice[] = [];
-        const parser = new XMLParser({ ignoreAttributes: false });
         const xml = await axios.get(this.apiUrl, { timeout: 30000 });
         const json = xml.data;
 
         const rows = json?.DataList?.Data;
-        console.log(xml.data);
-        console.log(rows);
-        if (!rows?.length) return prices;
+        if (!Array.isArray(rows)) return prices;
 
         const store = await prisma.goldStore.findUnique({
             where: { code: this.storeCode },
         });
+        if (!store) throw new Error('BTMC store not found');
 
-        if (!store) {
-            throw new Error('BTMC store not found');
-        }
-
-        // Cache goldTypeId by code
         const goldTypeCache = new Map<string, number>();
+        const dailyCode = buildDailyCode(new Date());
+
+        let collected = 0;
 
         for (const item of rows) {
-            console.log(`[BTMC] ${item['@row']}`);
+            if (collected >= 7) break;
+
             const row = Number(item['@row']);
-            if (row > 7) continue; // skip silver
+            if (!row) continue;
 
-            const goldTypeCode = this.resolveGoldTypeCode(row);
-            if (!goldTypeCode) continue;
+            // ✅ filter FIRST
+            if (item[`@k_${row}`]?.toUpperCase() !== '24K') continue;
 
-            const buy = Number(item[`@pb_${row}`]);
-            const sell = Number(item[`@ps_${row}`]);
+            const rawName = item[`@n_${row}`];
+            if (!rawName) continue;
+
+            const buy = Number(item[`@pb_${row}`])*10;
+            const sell = Number(item[`@ps_${row}`])*10;
             if (buy <= 0) continue;
-            const now = new Date();
-            const dailyCode = buildDailyCode(now);
-            // Resolve goldTypeId by CODE
+
+            const goldTypeCode = `BTMC_${normalizeGoldCode(rawName)}`;
+
             let goldTypeId = goldTypeCache.get(goldTypeCode);
             if (!goldTypeId) {
-                const goldType = await prisma.goldType.findUnique({
+                const goldType = await prisma.goldType.upsert({
                     where: { code: goldTypeCode },
+                    update: {
+                        name: rawName,
+                        description: rawName,
+                        isActive: true,
+                        updatedAt: new Date(),
+                    },
+                    create: {
+                        code: goldTypeCode,
+                        name: rawName,
+                        description: rawName,
+                        isActive: true,
+                    },
                 });
-                if (!goldType) {
-                    console.warn(`[BTMC] Missing gold_type code: ${goldTypeCode}`);
-                    continue;
-                }
+
                 goldTypeId = goldType.id;
-                goldTypeCache.set(goldTypeCode, goldTypeId);
+                if (goldTypeId != null) {
+                    goldTypeCache.set(goldTypeCode, goldTypeId);
+                }
             }
 
-            try {
-                prices.push({
-                        storeId: store.id,
-                        goldTypeId,
-                        buyPrice: buy,
-                        sellPrice: sell,
-                        dailyCode: dailyCode,
-                });
-            } catch (e) {
-                if (
-                    e instanceof Prisma.PrismaClientKnownRequestError &&
-                    e.code === 'P2002'
-                ) {
-                    // duplicate → ignore
-                } else {
-                    throw e;
-                }
-            }
+            prices.push(<CrawledPrice>{
+                storeId: store.id,
+                goldTypeId,
+                buyPrice: buy,
+                sellPrice: sell,
+                dailyCode,
+            });
+
+            collected++; // ✅ count only valid 24K rows
         }
+
+        console.log(`[BTMC] Crawled ${prices.length} prices`);
         return prices;
     }
 
-    private resolveGoldTypeCode(row: number): BTMCGoldTypeCode | null {
-        const key = `ROW_${row}` as keyof typeof BTMCGoldTypeCode;
-        return BTMCGoldTypeCode[key] ?? null;
-    }
 }
+

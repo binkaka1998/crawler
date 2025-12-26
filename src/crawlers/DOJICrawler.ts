@@ -1,9 +1,7 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import {resolveGoldTypeCode} from '../util/DOJIGoldTypeMap';
-import {PrismaClient} from "@prisma/client";
-import {buildDailyCode} from "../util/daily-code-generator";
-const prisma = new PrismaClient();
+import {buildDailyCode, normalizeGoldCode} from "../util/utilFunctions";
+import { prisma } from '../lib/prisma';
 
 export interface CrawledPrice {
     storeId: number;
@@ -23,7 +21,7 @@ export class DOJICrawler {
         const url =
             'http://giavang.doji.vn/sites/default/files/data/hienthi/vungmien_1.dat';
 
-        const response = await axios.get(url);
+        const response = await axios.get(url, { timeout: 30000 });
         const $ = cheerio.load(response.data);
 
         const store = await prisma.goldStore.findUnique({
@@ -34,40 +32,51 @@ export class DOJICrawler {
         const goldTypeCache = new Map<string, number>();
         const results: CrawledPrice[] = [];
 
-        const now = new Date();
-        const dailyCode = buildDailyCode(now);
+        const dailyCode = buildDailyCode(new Date());
 
         const rows = $('table.goldprice-view tbody tr').toArray();
 
-        for (let i = 0; i < rows.length; i++) {
-            const tr = rows[i];
-            const row = i + 1;
-
-            const goldTypeCode = resolveGoldTypeCode(row);
-            if (!goldTypeCode) continue;
-
+        for (const tr of rows) {
             const tds = $(tr).find('td');
             if (tds.length < 3) continue;
 
-            const buyPrice = Number($(tds[1]).text())*1000;
-            const sellPrice = Number($(tds[2]).text())*1000;
+            // 🔑 Gold type name (AUTO)
+            const rawName = $(tds[0]).text().trim();
+            if (!rawName) continue;
+
+            const buyPrice = Number($(tds[1]).text()) * 10000;
+            const sellPrice = Number($(tds[2]).text()) * 10000;
             if (buyPrice <= 0) continue;
 
-            // Resolve goldTypeId by CODE (cached)
+            // 🔑 Generate code (NO accent, NO special char)
+            const goldTypeCode = `DOJI_${normalizeGoldCode(rawName)}`;
+
+            // Resolve goldTypeId (cached + upsert)
             let goldTypeId = goldTypeCache.get(goldTypeCode);
             if (!goldTypeId) {
-                const goldType = await prisma.goldType.findUnique({
+                const goldType = await prisma.goldType.upsert({
                     where: { code: goldTypeCode },
+                    update: {
+                        name: rawName,
+                        description: rawName,
+                        isActive: true,
+                        updatedAt: new Date(),
+                    },
+                    create: {
+                        code: goldTypeCode,
+                        name: rawName,
+                        description: rawName,
+                        isActive: true,
+                    },
                 });
-                if (!goldType) {
-                    console.warn(`[DOJI] Missing gold_type code: ${goldTypeCode}`);
-                    continue;
-                }
+
                 goldTypeId = goldType.id;
-                goldTypeCache.set(goldTypeCode, goldTypeId);
+                if (goldTypeId != null) {
+                    goldTypeCache.set(goldTypeCode, goldTypeId);
+                }
             }
 
-            results.push({
+            results.push(<CrawledPrice>{
                 storeId: store.id,
                 goldTypeId,
                 buyPrice,

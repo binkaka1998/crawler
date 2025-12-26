@@ -1,5 +1,6 @@
 import { crawlerDb } from './lib/database';
-import { SJCCrawler, PNJCrawler, BTMCCrawler, DOJICrawler, CrawledPrice } from './crawlers';
+import {SJCCrawler, PNJCrawler, BTMCCrawler, DOJICrawler, CrawledPrice, MiHongCrawler} from './crawlers';
+import { closeBrowser } from './playwright/browser';
 
 export type { CrawledPrice };
 
@@ -8,15 +9,17 @@ export type { CrawledPrice };
  * Manages all individual crawlers
  */
 export class CrawlerManager {
-  private crawlers: Array<SJCCrawler | PNJCrawler | BTMCCrawler | DOJICrawler>;
+  private crawlers: Array<SJCCrawler | PNJCrawler | BTMCCrawler | DOJICrawler | MiHongCrawler>;
 
   constructor() {
     this.crawlers = [
-      // new SJCCrawler(),
-      // new PNJCrawler(),
+      new PNJCrawler(),
       new BTMCCrawler(),
       new DOJICrawler(),
+      new MiHongCrawler(),
+      new SJCCrawler()
     ];
+
   }
 
   /**
@@ -32,8 +35,8 @@ export class CrawlerManager {
       totalSaved: 0,
       errors: [] as string[],
     };
-
-    for (const crawler of this.crawlers) {
+    try {
+      for (const crawler of this.crawlers) {
       try {
         const crawlerName = crawler.constructor.name;
         console.log(`\n[CrawlerManager] Starting ${crawlerName}...`);
@@ -49,7 +52,7 @@ export class CrawlerManager {
         if (prices.length > 0) {
           const saveResult = await crawlerDb.saveDailyPricesBatch(prices);
           results.totalSaved += saveResult.success;
-          
+
           if (saveResult.failed > 0) {
             results.errors.push(...saveResult.errors);
           }
@@ -66,7 +69,10 @@ export class CrawlerManager {
         results.errors.push(errorMsg);
       }
     }
-
+    } finally {
+      // ✅ close browser ONCE after all crawlers finish
+      await closeBrowser();
+    }
     return results;
   }
 
@@ -77,7 +83,7 @@ export class CrawlerManager {
     const crawler = this.crawlers.find(c => {
       return (c as any).storeCode === storeCode;
     });
-    
+
     if (!crawler) {
       throw new Error(`Crawler not found for store: ${storeCode}`);
     }

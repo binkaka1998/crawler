@@ -33,15 +33,15 @@ model GoldStore {
 
 // Standardized gold types
 model GoldType {
-  id          Int       @id @default(autoincrement())
-  code        String    @unique // "GOLD_9999", "GOLD_RING_9999", etc.
+  id          Int              @id @default(autoincrement())
+  code        String           @unique // "GOLD_9999", "GOLD_RING_9999", etc.
   name        String
-  unit        String    @default("lượng")
+  unit        String           @default("lượng")
   description String?
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime? @updatedAt
-
+  isActive    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime?        @updatedAt
+  isChart     Boolean          @default(false)
   dailyPrices GoldDailyPrice[]
   prices      GoldPrice[]
 
@@ -58,6 +58,7 @@ model GoldDailyPrice {
   buyPrice   Decimal   @db.Decimal(15, 2)
   sellPrice  Decimal   @db.Decimal(15, 2)
   timestamp  DateTime  @default(now())
+  isChart    Boolean   @default(false)
   dailyCode  String
   store      GoldStore @relation(fields: [storeId], references: [id], onDelete: Cascade)
   goldType   GoldType  @relation(fields: [goldTypeId], references: [id], onDelete: Cascade)
@@ -113,4 +114,26 @@ model CrawlerLog {
   @@index([status])
   @@index([startedAt])
   @@map("crawler_logs")
+}
+
+model News {
+  id         Int      @id @default(autoincrement())
+  headlineEn String
+  headlineVi String?
+  slugVi     String   @unique
+  slugEn     String   @unique
+  shortEn    String?  @db.Text
+  shortVi    String?  @db.Text
+  contentEn  String   @db.Text
+  contentVi  String?  @db.Text
+  detailLink String   @unique
+  pageCited  String // 'Kitco', 'DailyForex', 'MarketWatch'
+  hash       String   @unique
+  active     Boolean  @default(false) // false = not published, true = published
+  createdAt  DateTime @default(now())
+
+  @@index([pageCited])
+  @@index([active])
+  @@index([createdAt])
+  @@map("news")
 }
