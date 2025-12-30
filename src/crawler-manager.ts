@@ -1,5 +1,5 @@
 import { crawlerDb } from './lib/database';
-import {SJCCrawler, PNJCrawler, BTMCCrawler, DOJICrawler, CrawledPrice, MiHongCrawler} from './crawlers';
+import {SJCCrawler, PNJCrawler, BTMCCrawler, DOJICrawler, CrawledPrice, MiHongCrawler} from './crawlers/price';
 import { closeBrowser } from './playwright/browser';
 
 export type { CrawledPrice };

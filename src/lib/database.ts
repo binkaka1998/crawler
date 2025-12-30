@@ -96,7 +96,11 @@ export class CrawlerDatabaseService {
             gte: startOfDay,
             lte: endOfDay,
           },
-          isChart: true
+          goldType: { is: {
+              comparisonId: {
+                not: null,
+              },
+            },}
         },
         include: {
           store: true,

@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/gold-tracker-crawler.iml" filepath="$PROJECT_DIR$/.idea/gold-tracker-crawler.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/gold-tracker-combined.iml" filepath="$PROJECT_DIR$/.idea/gold-tracker-combined.iml" />
     </modules>
   </component>
 </project>

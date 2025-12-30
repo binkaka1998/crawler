@@ -1,323 +1,402 @@
-# Gold Tracker Crawler
+# Gold Tracker - Complete System 🏆
 
-A standalone crawler service that fetches gold prices from various stores and saves them to the database.
+**All-in-one gold tracking solution:** Price crawler + News crawler
 
-## 🎯 Purpose
+---
 
-This crawler runs independently from the main application and is responsible for:
+## 🎯 What It Does
 
-1. **Fetching prices** from gold stores every 15 minutes (8 AM - 6 PM)
-2. **Mapping gold types** to standardized codes
-3. **Saving prices** to `GoldDailyPrice` table
-4. **Archiving prices** to `GoldPrice` table at end of day (11:59 PM)
-5. **Logging execution** to `CrawlerLog` table
+### 1. **Gold Price Crawler** 💰
+- Crawls 5 Vietnamese gold stores every 15 minutes
+- Stores: SJC, PNJ, DOJI, BTMC, Mi Hồng
+- Tracks buy/sell prices for 6 gold types
+- Auto-archives old data to OHLC format
 
-## 🚀 Quick Start
+### 2. **Gold News Crawler** 📰
+- Crawls 3 international news sources
+- Sources: Kitco (GraphQL API), DailyForex (full articles), MarketWatch (headlines)
+- 11 articles per crawl
+- Manual translation workflow
+- Publish control (active/inactive)
 
-```bash
-# Install dependencies
-npm install
-
-# Setup environment
-cp .env.example .env
-# Edit .env with your DATABASE_URL
-
-# Generate Prisma Client
-npm run prisma:generate
-
-# Run migrations
-npm run prisma:migrate
-
-# Seed database (stores and gold types)
-npm run prisma:seed
-
-# Start crawler scheduler
-npm start
-```
-
-## 📋 Environment Variables
-
-```env
-DATABASE_URL="postgresql://user:password@host:5432/gold_tracker?schema=public"
-NODE_ENV="production"
-RUN_ON_STARTUP="false"  # Set to "true" to run crawler immediately
-```
-
-## 📊 Crawler Schedule
-
-### Price Collection (Every 15 minutes)
-- **Cron**: `*/15 8-18 * * *`
-- **Time**: 8:00 AM - 6:00 PM
-- **Action**: Crawl all stores → Save to `GoldDailyPrice`
-
-### Daily Archive (End of day)
-- **Cron**: `59 23 * * *`
-- **Time**: 11:59 PM
-- **Action**: 
-  1. Calculate OHLC (Open, High, Low, Close)
-  2. Save to `GoldPrice` table
-  3. Clear `GoldDailyPrice` table
-
-## 🏪 Supported Stores
-
-1. **SJC** - Công ty Vàng bạc Đá quý Sài Gòn
-2. **PNJ** - Công ty Vàng bạc Đá quý Phú Nhuận
-3. **BTMC** - Công ty Bảo Tín Minh Châu
-4. **DOJI** - Công ty Vàng bạc Đá quý DOJI
-
-## 🗺️ Gold Type Mapping
-
-The crawler automatically maps store-specific gold type names to standardized codes:
-
-```typescript
-// Example mappings
-BTMC: "Vàng rồng Thăng Long 9999" → GOLD_9999
-SJC:  "Vàng 9999"                 → GOLD_9999
-PNJ:  "Vàng miếng PNJ 999.9"     → GOLD_PNJ_BAR
-DOJI: "Vàng miếng DOJI 999.9"    → GOLD_DOJI_BAR
-```
-
-All mappings are defined in `src/lib/gold-type-mapping.ts`
-
-## 🔧 Commands
-
-```bash
-# Start crawler with scheduler
-npm start
-
-# Development mode (auto-restart)
-npm run dev
-
-# Run crawler once (testing)
-npm run once
-
-# Database commands
-npm run prisma:generate  # Generate Prisma Client
-npm run prisma:migrate   # Run migrations
-npm run prisma:seed      # Seed initial data
-npm run prisma:studio    # Open Prisma Studio
-```
+---
 
 ## 📁 Project Structure
 
 ```
-gold-tracker-crawler/
-├── prisma/
-│   ├── schema.prisma        # Database schema
-│   └── seed.ts             # Seed data
+gold-tracker-combined/
 ├── src/
-│   ├── lib/
-│   │   ├── gold-type-mapping.ts  # Type mapping enum
-│   │   └── database.ts           # Database service
-│   ├── crawlers.ts         # Crawler implementations
-│   ├── scheduler.ts        # Main scheduler
-│   └── run-once.ts        # Test script
+│   ├── index.ts                # Master entry point (TypeScript)
+│   ├── run-once.ts             # Run price crawler once
+│   ├── scheduler.ts            # Price crawler scheduler
+│   ├── run-archive-once.ts     # Archive old prices
+│   ├── crawler-manager.ts      # Crawler orchestration
+│   ├── crawlers/
+│   │   ├── price/              # Price crawlers (TypeScript)
+│   │   │   ├── index.ts
+│   │   │   ├── SJCCrawler.ts
+│   │   │   ├── PNJCrawler.ts
+│   │   │   ├── DOJICrawler.ts
+│   │   │   ├── BTMCCrawler.ts
+│   │   │   └── MiHongCrawler.ts
+│   │   └── news/               # News crawlers (TypeScript)
+│   │       ├── types.ts
+│   │       ├── utils.ts
+│   │       ├── slugify.ts
+│   │       ├── database.ts
+│   │       ├── kitco.ts
+│   │       ├── dailyforex.ts
+│   │       ├── marketwatch.ts
+│   │       ├── index.ts
+│   │       ├── admin.ts
+│   │       └── scheduler.ts
+│   ├── lib/                    # Shared libraries
+│   │   ├── prisma.ts
+│   │   ├── database.ts
+│   │   └── gold-type-mapping.ts
+│   ├── playwright/             # Browser automation
+│   │   ├── browser.ts
+│   │   └── fetchJson.ts
+│   └── util/                   # Utilities
+│       └── utilFunctions.ts
+├── prisma/
+│   └── schema.prisma           # Combined database schema
 ├── package.json
-├── .env.example
-└── README.md
+├── tsconfig.json
+└── .env
 ```
 
-## 🔍 How It Works
+---
 
-### 1. Crawler Execution
+## 🚀 Quick Start
 
-```
-Scheduler triggers (every 15 mins)
-    ↓
-CrawlerManager.runAll()
-    ↓
-For each store:
-    ↓
-  - Fetch HTML/XML/JSON
-  - Parse prices
-  - Map gold type names → standard codes
-  - Save to database
-    ↓
-Log execution to CrawlerLog
-```
+### 1. Install
 
-### 2. Price Mapping Flow
-
-```
-Store Website
-    ↓ (HTTP request)
-Raw price data: "Vàng rồng Thăng Long 9999" - Buy: 78,500,000 - Sell: 79,000,000
-    ↓ (Parse)
-CrawledPrice object
-    ↓ (Map gold type)
-Standard code: GOLD_9999
-    ↓ (Database lookup)
-GoldType { id: 1, code: "GOLD_9999", name: "Vàng 9999" }
-    ↓ (Save)
-GoldDailyPrice record created
-```
-
-### 3. Archive Process
-
-```
-11:59 PM - Archive trigger
-    ↓
-Query all GoldDailyPrice for today
-    ↓ (Group by store + gold type)
-Calculate OHLC statistics
-    ↓
-For each group:
-  - Open: First price of the day
-  - High: Highest price of the day
-  - Low: Lowest price of the day
-  - Close: Last price of the day
-  - Average: Mean of all prices
-  - Change: Difference from previous day
-    ↓
-Save to GoldPrice table
-    ↓
-Delete from GoldDailyPrice
-```
-
-## 🐛 Troubleshooting
-
-### Crawler not starting
 ```bash
-# Check logs
+npm install
+```
+
+### 2. Configure
+
+```bash
+cp .env.example .env
+# Edit .env with your DATABASE_URL
+```
+
+### 3. Setup Database
+
+```bash
+npx prisma db push
+npx prisma generate
+```
+
+### 4. Install Playwright (for price crawler)
+```bash
+npx playwright install
+```
+
+### 5. Run Crawlers
+
+```bash
+# Run both crawlers
 npm start
 
-# Manually trigger
-npm run once
+# Run price crawler only
+npm run start:prices
+
+# Run news crawler only
+npm run start:news
 ```
 
-### Database connection error
+---
+
+## 📊 Database Schema
+
+### Price Tables:
+- `gold_stores` - Store information (SJC, PNJ, etc.)
+- `gold_types` - Gold types (SJC 1L, SJC 5C, etc.)
+- `gold_daily_prices` - Detailed prices (every 15 min)
+- `gold_price_history` - Historical OHLC data
+
+### News Tables:
+- `news` - News articles with English/Vietnamese fields
+
+---
+
+## ⚙️ Available Scripts
+
+### Price Crawler:
 ```bash
-# Verify DATABASE_URL in .env
-# Check PostgreSQL is running
-sudo systemctl status postgresql
-
-# Test connection
-npm run prisma:studio
+npm run crawl:prices          # Run once
+npm run scheduler:prices      # Auto-run every 15min
+npm run archive:once          # Archive old prices (manual)
 ```
 
-### No prices being saved
+### News Crawler:
 ```bash
-# Check crawler logs
-# Verify stores and gold types exist
-npm run prisma:studio
-
-# Re-seed if needed
-npm run prisma:seed
+npm run crawl:news            # Run once
+npm run scheduler:news        # Auto-run every 2 hours
+npm run admin:news            # Manage news
+npm run admin:news:list       # List inactive news
+npm run admin:news:stats      # Show statistics
 ```
 
-## 📊 Monitoring
-
-### Check Execution Logs
-```sql
-SELECT * FROM crawler_logs 
-ORDER BY created_at DESC 
-LIMIT 10;
+### Combined:
+```bash
+npm start                     # Run both crawlers
+npm test                      # Test setup
+npm run build                 # Build TypeScript
 ```
 
-### Check Latest Prices
-```sql
-SELECT 
-  gs.name as store,
-  gt.name as gold_type,
-  gdp.buy_price,
-  gdp.sell_price,
-  gdp.timestamp
-FROM gold_daily_prices gdp
-JOIN gold_stores gs ON gdp.store_id = gs.id
-JOIN gold_types gt ON gdp.gold_type_id = gt.id
-ORDER BY gdp.timestamp DESC
-LIMIT 20;
+---
+
+## 📰 News Workflow
+
+### 1. Crawl News
+```bash
+npm run crawl:news
+# → Saves 11 articles (active=false)
 ```
+
+### 2. Translate
+```bash
+npx prisma studio
+# Fill in: headlineVi, contentVi, slugVi
+```
+
+### 3. Activate
+```bash
+node src/crawlers/news/admin.js activate <id>
+# Or activate all translated:
+node src/crawlers/news/admin.js activate-all
+```
+
+---
+
+## 💰 Price Workflow
+
+### 1. Crawl Prices
+```bash
+npm run crawl:prices
+# → Updates prices from 5 stores
+```
+
+### 2. Schedule Auto-Crawl
+```bash
+npm run scheduler:prices
+# → Runs every 15 minutes
+```
+
+### 3. Archive Old Data
+```bash
+npm run archive:once
+# → Archives prices older than 30 days
+```
+
+---
+
+## 🎯 Features
+
+### Price Crawler:
+- ✅ 5 Vietnamese stores
+- ✅ 6 gold types per store
+- ✅ Every 15 minutes
+- ✅ Auto-archive to OHLC
+- ✅ TypeScript + Playwright
+
+### News Crawler:
+- ✅ 3 international sources
+- ✅ 11 articles per run
+- ✅ Full content (DailyForex)
+- ✅ Anti-detection headers
+- ✅ Retry logic
+- ✅ Manual translation
+- ✅ Publish control
+
+---
+
+## 📈 Data Flow
+
+```
+Price Crawler:
+Store websites → Playwright scraper → gold_daily_prices → (30 days) → gold_price_history
+
+News Crawler:
+News sites → HTTP fetch → news (active=false) → Manual translation → news (active=true)
+```
+
+---
+
+## 🔧 Configuration
+
+### Price Crawler:
+- Frequency: Every 15 minutes
+- Archive threshold: 30 days
+- Stores: 5 (SJC, PNJ, DOJI, BTMC, Mi Hồng)
+- Gold types: 6 per store
+
+### News Crawler:
+- Frequency: Every 2 hours
+- Sources: 3 (Kitco, DailyForex, MarketWatch)
+- Articles: 11 total (3+5+3)
+- Default status: inactive (requires translation)
+
+---
+
+## 🧪 Testing
+
+```bash
+# Test setup
+npm test
+
+# Test price crawler
+npx ts-node src/run-once.ts
+
+# Test news crawler
+node src/crawlers/news/index.js
+
+# Test individual news sources
+node src/crawlers/news/kitco.js
+node src/crawlers/news/dailyforex.js
+node src/crawlers/news/marketwatch.js
+```
+
+---
+
+## 📦 Dependencies
+
+### Core:
+- `@prisma/client` - Database ORM
+- `axios` - HTTP client
+- `cheerio` - HTML parser (news)
+- `playwright` - Browser automation (prices)
+- `node-cron` - Scheduling
+- `dotenv` - Environment config
+
+### Dev:
+- `typescript` - Type safety
+- `ts-node` - TypeScript execution
+- `prisma` - Database toolkit
+
+---
 
 ## 🚀 Deployment
 
-### Using PM2
-
+### Option 1: Local Server
 ```bash
-# Install PM2
-npm install -g pm2
+# Start both schedulers
+npm run scheduler:prices &
+npm run scheduler:news &
 
-# Start crawler
-pm2 start npm --name "gold-crawler" -- start
-
-# Save configuration
-pm2 save
-
-# Auto-start on boot
-pm2 startup
+# Archive monthly
+0 2 1 * * npm run archive:once
 ```
 
-### Using Docker
+### Option 2: Cloud (Vercel/Railway)
+- Deploy as separate services
+- Use cron jobs for scheduling
+- Shared database
 
+### Option 3: Docker
 ```dockerfile
-FROM node:18-alpine
+FROM node:20
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 COPY . .
 RUN npx prisma generate
 CMD ["npm", "start"]
 ```
 
-```bash
-docker build -t gold-crawler .
-docker run -d --name gold-crawler \
-  -e DATABASE_URL="postgresql://..." \
-  gold-crawler
-```
+---
 
-## 🔐 Security
+## ✅ Production Checklist
 
-- Never commit `.env` file
-- Use strong database passwords
-- Restrict database access to crawler IP
-- Monitor for suspicious activity in logs
-
-## 📝 Adding New Store
-
-1. **Create crawler class** in `src/crawlers.ts`:
-```typescript
-class NewStoreCrawler extends BaseCrawler {
-  constructor() {
-    super('NEWSTORE', 'New Store Name');
-  }
-
-  async crawl(): Promise<CrawledPrice[]> {
-    // Implement crawling logic
-    return prices;
-  }
-}
-```
-
-2. **Add to CrawlerManager**:
-```typescript
-this.crawlers = [
-  new SJCCrawler(),
-  new PNJCrawler(),
-  new BTMCCrawler(),
-  new DOJICrawler(),
-  new NewStoreCrawler(), // Add here
-];
-```
-
-3. **Add type mapping** in `src/lib/gold-type-mapping.ts`:
-```typescript
-NEWSTORE: [
-  ['Store Gold Type Name', GoldTypeCode.GOLD_9999],
-  // More mappings...
-],
-```
-
-4. **Seed store info**:
-```bash
-# Add to prisma/seed.ts then run:
-npm run prisma:seed
-```
-
-## 📄 License
-
-MIT
+- [ ] Database setup
+- [ ] Environment variables configured
+- [ ] Prisma client generated
+- [ ] Price crawler tested
+- [ ] News crawler tested
+- [ ] Archive task tested
+- [ ] Schedulers running
+- [ ] Monitoring setup
+- [ ] Backup strategy
 
 ---
 
-**Note**: This crawler runs independently and only writes to the database. The main application reads from the database to display prices.
+## 💡 Tips
+
+### Price Crawler:
+- Run archive task monthly
+- Monitor database size
+- Check store website changes
+
+### News Crawler:
+- Translate daily
+- Check for duplicate articles
+- Monitor source availability
+
+---
+
+## 🆘 Troubleshooting
+
+### Price Crawler Issues:
+```bash
+# Playwright browser not found
+npx playwright install
+
+# TypeScript errors
+npm run build
+```
+
+### News Crawler Issues:
+```bash
+# Timeout errors
+# → Anti-detection headers applied
+# → Retry logic in place
+
+# No articles found
+# → Check selector in crawler
+# → Test individual source
+```
+
+---
+
+## 📚 Documentation
+
+- `README.md` - This file
+- `QUICK-START.md` - 2-minute setup
+- `ANTI-DETECTION.md` - News crawler strategies
+- `API-INFO.md` - News sources details
+- `ARCHIVE-GUIDE.md` - Price archiving guide
+
+---
+
+## ✨ What You Get
+
+**Complete gold tracking system:**
+- 💰 Real-time prices (5 stores, 6 types)
+- 📰 International news (11 articles)
+- 📊 Historical data (OHLC)
+- 🌐 Bilingual (EN/VI)
+- ⚡ Auto-scheduled
+- 💾 Auto-archived
+
+**Perfect for:**
+- Gold price tracking website
+- Financial news portal
+- Investment platform
+- Market analysis tool
+
+---
+
+## 🎉 Summary
+
+**This is a complete, production-ready gold tracking system combining:**
+1. Price crawler (Vietnamese stores)
+2. News crawler (International sources)
+3. Auto-scheduling
+4. Data archiving
+5. Translation workflow
+
+**Everything you need in one package!** 🏆

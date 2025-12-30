@@ -1,37 +1,47 @@
 {
-  "name": "gold-tracker-crawler",
+  "name": "gold-tracker-combined",
   "version": "1.0.0",
-  "description": "Gold price crawler - writes price data to database",
-  "main": "src/scheduler.ts",
+  "description": "Complete gold tracking system - prices + news crawler",
+  "type": "module",
+  "main": "src/index.js",
   "scripts": {
-    "start": "tsx src/scheduler.ts",
-    "dev": "tsx watch src/scheduler.ts",
-    "once": "tsx src/run-once.ts",
+    "start": "tsx  src/index.ts",
+    "start:prices": "tsx  src/index.ts --prices",
+    "start:news": "tsx src/index.ts --news",
+    "crawl:prices": "tsx src/run-once.ts",
+    "crawl:news": "tsx src/crawlers/news/index.ts",
+    "scheduler:prices": "tsx src/scheduler.ts",
+    "scheduler:news": "tsx src/crawlers/news/scheduler.ts",
+    "admin:news": "tsx src/crawlers/news/admin.ts",
+    "admin:news:list": "tsx src/crawlers/news/admin.ts list",
+    "admin:news:stats": "tsx src/crawlers/news/admin.ts stats",
+    "admin:news:activate-all": "tsx src/crawlers/news/admin.ts activate-all",
     "archive:once": "tsx src/run-archive-once.ts",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "tsx prisma/seed.ts",
-    "prisma:sample-data": "tsx prisma/generate-sample-data.ts",
-    "prisma:deploy": "prisma migrate deploy",
-    "prisma:studio": "prisma studio"
+    "test": "node test.js",
+    "build": "tsc",
+    "dev": "tsx src/index.ts"
   },
+  "keywords": [
+    "gold",
+    "price",
+    "news",
+    "crawler",
+    "tracker"
+  ],
+  "author": "DHoang",
+  "license": "MIT",
   "dependencies": {
     "@prisma/client": "^5.22.0",
-    "axios": "^1.7.9",
-    "fast-xml-parser": "^4.5.0",
-    "playwright": "^1.43.0",
-    "dayjs": "^1.11.10",
-    "cheerio": "^1.0.0",
-    "node-cron": "^3.0.3"
+    "axios": "^1.6.5",
+    "cheerio": "^1.0.0-rc.12",
+    "dotenv": "^16.3.1",
+    "node-cron": "^3.0.3",
+    "playwright": "^1.40.0"
   },
   "devDependencies": {
-    "@types/node": "^22.10.1",
-    "@types/node-cron": "^3.0.11",
+    "@types/node": "^20.10.0",
     "prisma": "^5.22.0",
-    "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   }
 }

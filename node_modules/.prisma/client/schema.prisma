@@ -33,17 +33,20 @@ model GoldStore {
 
 // Standardized gold types
 model GoldType {
-  id          Int              @id @default(autoincrement())
-  code        String           @unique // "GOLD_9999", "GOLD_RING_9999", etc.
-  name        String
-  unit        String           @default("lượng")
-  description String?
-  isActive    Boolean          @default(true)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime?        @updatedAt
-  isChart     Boolean          @default(false)
-  dailyPrices GoldDailyPrice[]
-  prices      GoldPrice[]
+  id           Int              @id @default(autoincrement())
+  code         String           @unique // "GOLD_9999", "GOLD_RING_9999", etc.
+  name         String
+  order        Int              @default(999)
+  comparisonId Int?
+  unit         String           @default("lượng")
+  description  String?
+  isActive     Boolean          @default(true)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime?        @updatedAt
+  isChart      Boolean          @default(false)
+  dailyPrices  GoldDailyPrice[]
+  prices       GoldPrice[]
+  Comparison   Comparison?      @relation(fields: [comparisonId], references: [id])
 
   @@index([code])
   @@index([isActive])
@@ -137,4 +140,22 @@ model News {
   @@index([active])
   @@index([createdAt])
   @@map("news")
+}
+
+model Comparison {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  name        String
+  description String?
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  goldTypes GoldType[]
+
+  @@index([code])
+  @@index([isActive])
+  @@index([order])
+  @@map("comparisons")
 }
