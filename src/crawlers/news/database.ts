@@ -29,9 +29,21 @@ export async function saveArticles(articles: NewsArticle[]): Promise<SaveStats> 
         continue
       }
 
-      // Create new article
-      await prisma.news.create({
-        data: {
+      await prisma.news.upsert({
+        where: {
+          detailLink: article.detailLink, // Find by unique detailLink
+        },
+        update: {
+          // Update existing article
+          headlineEn: article.headlineEn,
+          slugEn: article.slugEn,
+          shortEn: article.shortEn,
+          contentEn: article.contentEn,
+          pageCited: article.pageCited,
+          hash: article.hash,
+        },
+        create: {
+          // Create new article
           headlineEn: article.headlineEn,
           slugEn: article.slugEn,
           slugVi: article.slugEn, // Initially same as English
@@ -40,7 +52,7 @@ export async function saveArticles(articles: NewsArticle[]): Promise<SaveStats> 
           detailLink: article.detailLink,
           pageCited: article.pageCited,
           hash: article.hash,
-          active: false // Inactive by default (needs translation)
+          active: false, // Inactive by default (needs translation)
         }
       })
 

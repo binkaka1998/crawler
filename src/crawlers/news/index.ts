@@ -40,13 +40,13 @@ export async function crawlAllNews(): Promise<{
     console.error('⚠️  DailyForex crawler failed, continuing...')
   }
 
-  // Crawl MarketWatch
-  try {
-    const marketWatchArticles = await crawlMarketWatch()
-    allArticles.push(...marketWatchArticles)
-  } catch (error) {
-    console.error('⚠️  MarketWatch crawler failed, continuing...')
-  }
+  // // Crawl MarketWatch
+  // try {
+  //   const marketWatchArticles = await crawlMarketWatch()
+  //   allArticles.push(...marketWatchArticles)
+  // } catch (error) {
+  //   console.error('⚠️  MarketWatch crawler failed, continuing...')
+  // }
 
   console.log(`\n📊 Total articles found: ${allArticles.length}`)
 
@@ -54,7 +54,7 @@ export async function crawlAllNews(): Promise<{
   if (allArticles.length > 0) {
     console.log('\n💾 Saving articles to database...')
     const stats = await saveArticles(allArticles)
-    
+
     console.log('\n📈 Save Statistics:')
     console.log(`   Total: ${stats.total}`)
     console.log(`   ✅ Saved: ${stats.saved}`)
