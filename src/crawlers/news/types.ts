@@ -62,4 +62,6 @@ export interface BrowserHeaders {
   'sec-ch-ua-mobile': string
   'sec-ch-ua-platform': string
   'Referer'?: string
+  [key: string]: string | undefined
 }
+

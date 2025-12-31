@@ -1,17 +1,17 @@
 import { crawlerManager } from './crawler-manager';
 import { crawlerDb } from './lib/database';
 
-async function runOnce() {
+export async function runOnce() {
   console.log('🚀 Running crawler once...');
   console.log('═'.repeat(60));
-  
+
   const startTime = Date.now();
 
   try {
     const result = await crawlerManager.runAll();
 
     const duration = Date.now() - startTime;
-    
+
     console.log('');
     console.log('✅ Crawler completed!');
     console.log('═'.repeat(60));
@@ -37,8 +37,11 @@ async function runOnce() {
   }
 }
 
-runOnce().then(() => {
-  console.log('');
-  console.log('👋 Done! Exiting...');
-  process.exit(0);
-});
+// ✅ Only run directly if this file is executed (not imported)
+if (import.meta.url === `file://${process.argv[1]}`) {
+  runOnce().then(() => {
+    console.log('');
+    console.log('👋 Done! Exiting...');
+    process.exit(0);
+  });
+}

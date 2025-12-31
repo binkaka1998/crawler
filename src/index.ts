@@ -15,24 +15,24 @@ console.log('╚═════════════════════�
 async function main(): Promise<void> {
   console.log('🚀 Starting Gold Tracker System')
   console.log(`📅 ${new Date().toLocaleString('vi-VN')}\n`)
-  
+
   // Check which crawlers to run
   const args = process.argv.slice(2)
   const runPrices = args.length === 0 || args.includes('--prices')
   const runNews = args.length === 0 || args.includes('--news')
-  
+
   // Run price crawler
   if (runPrices) {
     console.log('💰 Running Price Crawler...')
     try {
-      const { runOnceCrawler } = await import('./run-once.js')
-      await runOnceCrawler()
+      const { runOnce } = await import('./run-once.js')
+      await runOnce()
       console.log('✅ Price crawler completed\n')
     } catch (error) {
       console.error('❌ Price crawler failed:', error instanceof Error ? error.message : 'Unknown error')
     }
   }
-  
+
   // Run news crawler
   if (runNews) {
     console.log('📰 Running News Crawler...')
@@ -44,7 +44,7 @@ async function main(): Promise<void> {
       console.error('❌ News crawler failed:', error instanceof Error ? error.message : 'Unknown error')
     }
   }
-  
+
   console.log('🎉 Gold Tracker System completed!')
 }
 

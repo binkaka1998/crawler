@@ -42,17 +42,17 @@ async function fetchWithRetry(url: string, maxRetries: number = 3): Promise<Axio
         headers: getBrowserHeaders(),
         validateStatus: (status) => status < 500
       })
-      
+
       if (response.status === 200) {
         return response
       }
-      
+
       console.log(`⚠️  Status ${response.status}, retrying...`)
     } catch (error) {
       if (attempt === maxRetries) {
         throw error
       }
-      
+
       const delay = attempt * 2000
       console.log(`⚠️  Attempt ${attempt} failed, retrying in ${delay/1000}s...`)
       await sleep(delay)
@@ -66,10 +66,10 @@ async function fetchWithRetry(url: string, maxRetries: number = 3): Promise<Axio
  */
 export async function crawlMarketWatch(): Promise<NewsArticle[]> {
   console.log('📰 [MarketWatch] Starting crawler...')
-  
+
   try {
     const response = await fetchWithRetry(NEWS_URL)
-    
+
     if (!response || !response.data) {
       console.error('❌ [MarketWatch] Failed to fetch page')
       return []
@@ -80,19 +80,19 @@ export async function crawlMarketWatch(): Promise<NewsArticle[]> {
 
     // Try multiple selectors for headlines
     let headlineElements = $('.module--section.top--quote--headlines .article__headline').slice(0, 3)
-    
+
     if (headlineElements.length === 0) {
       console.log('⚠️  [MarketWatch] Primary selector failed, trying alternatives...')
-      
+
       // Fallback selectors
       headlineElements = $(
         '.article__headline, ' +
         '.element--article h3, ' +
         '.article-headline a, ' +
         '.link-news-story'
-      ).slice(0, 3)
+      ).slice(0, 3) as any
     }
-    
+
     if (headlineElements.length === 0) {
       console.error('❌ [MarketWatch] No articles found')
       return []
@@ -101,20 +101,20 @@ export async function crawlMarketWatch(): Promise<NewsArticle[]> {
     headlineElements.each((index, element) => {
       try {
         const $article = $(element)
-        
+
         // Get the link element
         const $link = $article.is('a') ? $article : $article.find('a')
-        
+
         // Extract headline
         const headlineEn = cleanText($link.text() || $article.text())
-        
+
         // Extract link
-        let detailLink = $link.attr('href')
-        
+        let detailLink = $link.attr('href') ? $link.attr('href') : null
+
         if (!detailLink) return
-        
+
         detailLink = makeAbsoluteUrl(detailLink, BASE_URL)
-        
+
         // Try to find summary/description
         let summary = ''
         const $parent = $article.parent()
@@ -125,18 +125,18 @@ export async function crawlMarketWatch(): Promise<NewsArticle[]> {
           $parent.find('p').first().text() ||
           $article.next('p').text()
         )
-        
+
         // Use headline as content if no summary
         const contentEn = summary || headlineEn
         const shortEn = truncate(contentEn, 200)
-        
+
         if (headlineEn && detailLink) {
           // Generate slug
           const slugEn = slugifyEnglish(headlineEn)
-          
+
           // Generate hash
           const hash = generateArticleHash(detailLink, headlineEn)
-          
+
           articles.push({
             headlineEn,
             slugEn,
@@ -146,7 +146,7 @@ export async function crawlMarketWatch(): Promise<NewsArticle[]> {
             pageCited: 'MarketWatch',
             hash
           })
-          
+
           console.log(`   ✅ Found: "${headlineEn.substring(0, 50)}..."`)
         }
       } catch (error) {

@@ -41,7 +41,7 @@ export class SJCCrawler {
         // 3️⃣ Extract raw rows
         const rows = await page.evaluate(() => {
             const data: Array<{ name: string; buy: number; sell: number }> = [];
-            document.querySelectorAll('table tbody tr').forEach((tr) => {
+            document.querySelectorAll('table tbody tr').forEach((tr: any) => {
                 const tds = tr.querySelectorAll('td');
                 if (tds.length < 3) return;
 
