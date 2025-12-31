@@ -1,0 +1,11 @@
+name: Verify Database
+  run: |
+    echo "Checking database..."
+    npx prisma db execute --stdin <<< "
+      SELECT 
+        (SELECT COUNT(*) FROM \"GoldStore\") as stores,
+        (SELECT COUNT(*) FROM \"GoldType\") as types,
+        (SELECT COUNT(*) FROM \"Comparison\") as comparisons;
+    "
+  env:
+    DATABASE_URL: ${{ secrets.DATABASE_URL }}
