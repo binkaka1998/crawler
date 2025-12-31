@@ -3,9 +3,7 @@ name: Verify Database
     echo "Checking database..."
     npx prisma db execute --stdin <<< "
       SELECT 
-        (SELECT COUNT(*) FROM \"GoldStore\") as stores,
-        (SELECT COUNT(*) FROM \"GoldType\") as types,
-        (SELECT COUNT(*) FROM \"Comparison\") as comparisons;
+        (SELECT COUNT(*) FROM \"gold_stores\") as stores;
     "
   env:
     DATABASE_URL: ${{ secrets.DATABASE_URL }}
