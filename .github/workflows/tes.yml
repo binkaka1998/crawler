@@ -1,9 +1,20 @@
-name: Verify Database
+- name: Verify Database
   run: |
-    echo "Checking database..."
-    npx prisma db execute --stdin <<< "
-      SELECT 
-        (SELECT COUNT(*) FROM \"gold_stores\") as stores;
+    node -e "
+    const { PrismaClient } = require('@prisma/client');
+    const prisma = new PrismaClient();
+    (async () => {
+      try {
+        const count = await prisma.goldStore.count();
+        console.log('Found', count, 'stores');
+        if (count === 0) throw new Error('Database is empty!');
+        await prisma.\$disconnect();
+      } catch (e) {
+        console.log('Error:', e.message);
+        await prisma.\$disconnect();
+        process.exit(1);
+      }
+    })();
     "
   env:
     DATABASE_URL: ${{ secrets.DATABASE_URL }}
