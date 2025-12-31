@@ -1,13 +1,10 @@
-name: Gold Price & News Crawler
+name: Gold Price & News Crawler (Optimized)
 
 on:
   schedule:
     # Price crawler: Every 30 minutes from 00:00-12:00 UTC (7:00 AM - 7:00 PM UTC+7)
-    # UTC+7 = Vietnam time, so we need to subtract 7 hours
-    # 7:00 AM UTC+7 = 00:00 UTC
-    # 7:00 PM UTC+7 = 12:00 UTC
-    - cron: '0,30 0-11 * * *'   # Every 30 min from 00:00-11:30 UTC
-    - cron: '0 12 * * *'         # Final run at 12:00 UTC (7:00 PM UTC+7)
+    - cron: '0,30 0-11 * * *'
+    - cron: '0 12 * * *'
 
     # News crawler: Every 2 hours (24/7)
     - cron: '0 */2 * * *'
@@ -28,7 +25,6 @@ on:
 jobs:
   crawl-prices:
     runs-on: ubuntu-latest
-    # Run on schedule or manual trigger for prices
     if: |
       (github.event.schedule == '0,30 0-11 * * *') ||
       (github.event.schedule == '0 12 * * *') ||
@@ -43,13 +39,41 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: 'npm'  # ✅ Cache npm dependencies
+
+      # ✅ Cache Playwright browsers (saves ~30-60 seconds per run)
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
+      # ✅ Cache Prisma engines (saves ~5-10 seconds per run)
+      - name: Cache Prisma engines
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules/.prisma
+            ~/.cache/prisma
+          key: prisma-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            prisma-${{ runner.os }}-
 
       - name: Install dependencies
         run: npm ci
 
+      # Only install Playwright if cache miss
       - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
+
+      # Ensure Playwright is ready even on cache hit
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
 
       - name: Generate Prisma Client
         run: npx prisma generate
@@ -74,7 +98,6 @@ jobs:
 
   crawl-news:
     runs-on: ubuntu-latest
-    # Run on schedule or manual trigger for news
     if: |
       (github.event.schedule == '0 */2 * * *') ||
       (github.event.inputs.crawler_type == 'news') ||
@@ -88,13 +111,41 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: 'npm'  # ✅ Cache npm dependencies
+
+      # ✅ Cache Playwright browsers
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
+      # ✅ Cache Prisma engines
+      - name: Cache Prisma engines
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules/.prisma
+            ~/.cache/prisma
+          key: prisma-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            prisma-${{ runner.os }}-
 
       - name: Install dependencies
         run: npm ci
 
+      # Only install Playwright if cache miss
       - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
+
+      # Ensure Playwright is ready even on cache hit
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
 
       - name: Generate Prisma Client
         run: npx prisma generate
