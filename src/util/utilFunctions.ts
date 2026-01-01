@@ -44,3 +44,22 @@ export function normalizeGoldCode(input: string): string {
         .replace(/[^A-Z0-9]+/g, '_')           // only A-Z 0-9 _
         .replace(/^_+|_+$/g, '');              // trim _
 }
+
+export function miHongDateTimeToDailyCode(dateTime: string): string {
+    const [datePart, timePart] = dateTime.split(", ");
+
+    const [day, month, year] = datePart.split("/").map(Number);
+    const [hour, minute] = timePart.split(":").map(Number);
+
+    const localDate = new Date(
+        year,
+        month - 1,
+        day,
+        hour,
+        minute,
+        0,
+        0
+    );
+
+    return buildDailyCode(localDate);
+}

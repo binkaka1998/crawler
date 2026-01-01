@@ -1,6 +1,6 @@
-import { prisma } from '../../lib/prisma';
-import { buildDailyCode, normalizeGoldCode } from '../../util/utilFunctions';
-import { fetchJsonViaPlaywrightWithRetry } from '../../playwright/fetchJson';
+import { prisma } from "../../lib/prisma";
+import { normalizeGoldCode, miHongDateTimeToDailyCode } from "../../util/utilFunctions";
+import { fetchMiHongPrices } from "../../playwright/mihong.fetch";
 
 export interface CrawledPrice {
     storeId: number;
@@ -11,67 +11,61 @@ export interface CrawledPrice {
 }
 
 export class MiHongCrawler {
-    private storeCode = 'MIHONG';
-    private storeName = 'Tiệm vàng Mi Hồng';
+    private storeCode = "MIHONG";
+    private storeName = "Tiệm vàng Mi Hồng";
 
-    async crawl() {
+    async crawl(): Promise<CrawledPrice[]> {
         console.log(`[${this.storeName}] Starting crawl...`);
 
-        const url = 'https://apiclient.topi.vn/api-web/GetGoldPrice?source_gold=mi-hong&platform=Web';
-
         try {
-            // Use Playwright with retry (3 attempts)
-            const data = await fetchJsonViaPlaywrightWithRetry(url, 3);
-            const items = data?.data;
+            const response = await fetchMiHongPrices();
+            const items = response?.data;
 
             if (!Array.isArray(items)) {
-                console.log(`[${this.storeName}] No valid data found`);
+                console.log(`[${this.storeName}] No data returned`);
                 return [];
             }
 
             const store = await prisma.goldStore.findUnique({
                 where: { code: this.storeCode },
             });
-            if (!store) throw new Error('MIHONG store not found');
+            if (!store) throw new Error("MIHONG store not found");
 
             const goldTypeCache = new Map<string, number>();
-            const dailyCode = buildDailyCode(new Date());
-            const results = [];
+            const results: CrawledPrice[] = [];
 
             for (const item of items) {
-                const buyPrice = Number(item.buyPrice);
-                const sellPrice = Number(item.sellPrice);
+                const buyPrice = Number(item.buyingPrice);
+                const sellPrice = Number(item.sellingPrice);
                 if (buyPrice <= 0) continue;
 
-                const rawType = item.goldType;
-                if (!rawType) continue;
-
-                const goldTypeCode = `MIHONG_${normalizeGoldCode(rawType)}`;
+                const normalized = normalizeGoldCode(item.code);
+                const goldTypeCode = `MIHONG_${normalized}`;
 
                 let goldTypeId = goldTypeCache.get(goldTypeCode);
                 if (!goldTypeId) {
                     const goldType = await prisma.goldType.upsert({
                         where: { code: goldTypeCode },
                         update: {
-                            name: rawType,
-                            description: rawType,
+                            name: item.code,
+                            description: item.code,
                             isActive: true,
                         },
                         create: {
                             code: goldTypeCode,
-                            name: rawType,
-                            description: rawType,
+                            name: item.code,
+                            description: item.code,
                             isActive: true,
                         },
                     });
 
                     goldTypeId = goldType.id;
-                    if (goldTypeId != null) {
-                        goldTypeCache.set(goldTypeCode, goldTypeId);
-                    }
+                    goldTypeCache.set(goldTypeCode, goldTypeId);
                 }
 
-                results.push(<CrawledPrice>{
+                const dailyCode = miHongDateTimeToDailyCode(item.dateTime);
+
+                results.push({
                     storeId: store.id,
                     goldTypeId,
                     buyPrice,
@@ -83,8 +77,8 @@ export class MiHongCrawler {
             console.log(`[${this.storeName}] Found ${results.length} prices`);
             return results;
 
-        } catch (error: any) {
-            console.error(`[${this.storeName}] ❌ Error:`, error.message);
+        } catch (err: any) {
+            console.error(`[${this.storeName}] ❌ Error:`, err.message);
             return [];
         }
     }
