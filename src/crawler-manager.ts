@@ -13,11 +13,11 @@ export class CrawlerManager {
 
   constructor() {
     this.crawlers = [
-      // new PNJCrawler(),
-      // new BTMCCrawler(),
-      // new DOJICrawler(),
+      new PNJCrawler(),
+      new BTMCCrawler(),
+      new DOJICrawler(),
       new MiHongCrawler(),
-      // new SJCCrawler()
+      new SJCCrawler()
     ];
 
   }
