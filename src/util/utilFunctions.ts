@@ -17,6 +17,18 @@ export function buildDailyCode(date: Date = new Date()): string {
     return `${yyyy}${mm}${dd}${hh}${slot}`;
 }
 
+export function buildDailyCodeDate(date: Date = new Date()): string {
+    if (isNaN(date.getTime())) {
+        throw new Error('Invalid Date passed to buildDailyCode');
+    }
+
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+
+    return `${yyyy}${mm}${dd}`;
+}
+
 /**
  * Normalize string to DB-safe CODE:
  * - remove Vietnamese accents

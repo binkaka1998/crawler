@@ -1,4 +1,5 @@
 import { PrismaClient, Prisma } from '@prisma/client';
+import {buildDailyCode, buildDailyCodeDate} from "../util/utilFunctions";
 
 const prisma = new PrismaClient();
 export class CrawlerDatabaseService {
@@ -88,28 +89,31 @@ export class CrawlerDatabaseService {
   async archiveDailyPrices(date: Date = new Date()) {
     try {
       const startOfDay = new Date(date.setHours(0, 0, 0, 0));
-      const endOfDay = new Date(date.setHours(23, 59, 59, 999));
-
-      const dailyPrices = await prisma.goldDailyPrice.findMany({
-        where: {
-          timestamp: {
-            gte: startOfDay,
-            lte: endOfDay,
-          },
-          goldType: { is: {
-              comparisonId: {
-                not: null,
-              },
-            },}
-        },
-        include: {
-          store: true,
-          goldType: true,
-        },
-        orderBy: {
-          timestamp: 'asc'
-        }
-      });
+      // const endOfDay = new Date(date.setHours(23, 59, 59, 999));
+        const dailyCode = buildDailyCodeDate(new Date(date.setHours(0, 0, 0, 0) - 1));
+        console.log(`Daily Code: ${dailyCode}`);
+        console.log(`Start Day: ${startOfDay}`);
+            const dailyPrices = await prisma.goldDailyPrice.findMany({
+                where: {
+                    dailyCode: {
+                        startsWith: dailyCode,
+                    },
+                    goldType: {
+                        is: {
+                            comparisonId: {
+                                not: null,
+                            },
+                        },
+                    },
+                },
+                include: {
+                    store: true,
+                    goldType: true,
+                },
+                orderBy: {
+                    timestamp: "asc",
+                },
+            });
 
       if (dailyPrices.length === 0) {
         console.log('No daily prices to archive');
@@ -145,7 +149,6 @@ export class CrawlerDatabaseService {
         const avgSell = sellPrices.reduce((a, b) => a + b, 0) / sellPrices.length;
 
         const previousDay = new Date(startOfDay);
-        previousDay.setDate(previousDay.getDate() - 1);
 
         const prevPrice = await prisma.goldPrice.findFirst({
           where: {
@@ -209,10 +212,9 @@ export class CrawlerDatabaseService {
 
       const deleted = await prisma.goldDailyPrice.deleteMany({
         where: {
-          timestamp: {
-            gte: startOfDay,
-            lte: endOfDay,
-          }
+            dailyCode: {
+                startsWith: dailyCode,
+            }
         }
       });
 
