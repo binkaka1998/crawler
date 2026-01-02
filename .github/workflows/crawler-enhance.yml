@@ -1,0 +1,210 @@
+name: Gold Price & News Crawler (Stable Scheduler)
+
+on:
+  # Single, reliable scheduler
+  schedule:
+    - cron: '*/30 * * * *'
+
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      crawler_type:
+        description: 'Crawler to run'
+        required: true
+        default: 'prices'
+        type: choice
+        options:
+          - prices
+          - news
+          - archive
+          - both
+
+jobs:
+  decide:
+    name: Decide what to run
+    runs-on: ubuntu-latest
+    outputs:
+      run_prices: ${{ steps.decide.outputs.run_prices }}
+      run_news: ${{ steps.decide.outputs.run_news }}
+      run_archive: ${{ steps.decide.outputs.run_archive }}
+
+    steps:
+      - name: Decide by Vietnam time
+        id: decide
+        run: |
+          HOUR=$(TZ=Asia/Ho_Chi_Minh date +%H)
+          MIN=$(TZ=Asia/Ho_Chi_Minh date +%M)
+
+          echo "VN time: $HOUR:$MIN"
+
+          # Defaults
+          RUN_PRICES=false
+          RUN_NEWS=false
+          RUN_ARCHIVE=false
+
+          # Prices: 07:00–19:30 VN time (every 30 min)
+          if [ "$HOUR" -ge 7 ] && [ "$HOUR" -le 19 ]; then
+            RUN_PRICES=true
+          fi
+
+          # News: every 2 hours (24/7)
+          if [ $((10#$HOUR % 2)) -eq 0 ] && [ "$MIN" -eq 0 ]; then
+            RUN_NEWS=true
+          fi
+
+          # Archive: exactly midnight VN time
+          if [ "$HOUR" -eq 0 ] && [ "$MIN" -eq 0 ]; then
+            RUN_ARCHIVE=true
+          fi
+
+          # Manual overrides
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            case "${{ github.event.inputs.crawler_type }}" in
+              prices) RUN_PRICES=true ;;
+              news) RUN_NEWS=true ;;
+              archive) RUN_ARCHIVE=true ;;
+              both)
+                RUN_PRICES=true
+                RUN_NEWS=true
+                ;;
+            esac
+          fi
+
+          echo "run_prices=$RUN_PRICES" >> $GITHUB_OUTPUT
+          echo "run_news=$RUN_NEWS" >> $GITHUB_OUTPUT
+          echo "run_archive=$RUN_ARCHIVE" >> $GITHUB_OUTPUT
+
+  crawl-prices:
+    needs: decide
+    if: needs.decide.outputs.run_prices == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            node_modules/.prisma
+            ~/.cache/prisma
+          key: prisma-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps chromium
+
+      - run: npx prisma generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Run Price Crawler
+        run: npm run crawl:prices
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NODE_ENV: production
+          TZ: Asia/Ho_Chi_Minh
+
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: price-logs-${{ github.run_number }}
+          path: logs/
+
+  crawl-news:
+    needs: decide
+    if: needs.decide.outputs.run_news == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            node_modules/.prisma
+            ~/.cache/prisma
+          key: prisma-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps chromium
+
+      - run: npx prisma generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Run News Crawler
+        run: npm run crawl:news
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NODE_ENV: production
+          TZ: Asia/Ho_Chi_Minh
+
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: news-logs-${{ github.run_number }}
+          path: logs/
+
+  archive-prices:
+    needs: decide
+    if: needs.decide.outputs.run_archive == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            node_modules/.prisma
+            ~/.cache/prisma
+          key: prisma-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+
+      - run: npm ci
+
+      - run: npx prisma generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Archive End-of-Day Prices
+        run: npm run archive:once
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NODE_ENV: production
+          TZ: Asia/Ho_Chi_Minh
+
+      - name: Re-run daily price once
+        run: npm run crawl:prices
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NODE_ENV: production
+          TZ: Asia/Ho_Chi_Minh
