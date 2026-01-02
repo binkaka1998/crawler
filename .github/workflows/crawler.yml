@@ -208,6 +208,14 @@ jobs:
           TZ: Asia/Ho_Chi_Minh
         timeout-minutes: 5
 
+      - name: Re-run daily price once
+        run: npm run crawl:prices
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NODE_ENV: production
+          TZ: Asia/Ho_Chi_Minh
+        timeout-minutes: 5
+
       - name: Upload logs (if failed)
         if: failure()
         uses: actions/upload-artifact@v4
