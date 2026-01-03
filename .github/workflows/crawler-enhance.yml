@@ -52,9 +52,9 @@ jobs:
             RUN_NEWS=true
           fi
 
-          # Archive: exactly midnight VN time
-          if [ "$HOUR" -eq 0 ] && [ "$MIN" -eq 0 ]; then
-            RUN_ARCHIVE=true
+          # Archive: between 00:00 and 00:30 VN time
+          if [ "$HOUR" -eq 0 ] && [ "$MIN" -lt 30 ]; then
+          RUN_ARCHIVE=true
           fi
 
           # Manual overrides
