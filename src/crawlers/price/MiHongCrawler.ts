@@ -35,8 +35,8 @@ export class MiHongCrawler {
             const results: CrawledPrice[] = [];
 
             for (const item of items) {
-                const buyPrice = Number(item.buyingPrice);
-                const sellPrice = Number(item.sellingPrice);
+                const buyPrice = Number(item.buyingPrice)*10;
+                const sellPrice = Number(item.sellingPrice)*10;
                 if (buyPrice <= 0) continue;
 
                 const normalized = normalizeGoldCode(item.code);
