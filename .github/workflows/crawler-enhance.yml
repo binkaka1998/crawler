@@ -48,7 +48,7 @@ jobs:
           fi
 
           # News: every 2 hours (24/7)
-          if [ $((10#$HOUR % 2)) -eq 0 ] && [ "$MIN" -eq 0 ]; then
+          if [ $((10#$HOUR % 2)) -eq 0 ]; then
             RUN_NEWS=true
           fi
 
