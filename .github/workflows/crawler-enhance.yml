@@ -202,6 +202,7 @@ jobs:
           NODE_ENV: production
           TZ: Asia/Ho_Chi_Minh
 
+      - run: npx playwright install --with-deps chromium
       - name: Re-run daily price once
         run: npm run crawl:prices
         env:
