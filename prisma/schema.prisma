@@ -46,7 +46,7 @@ model GoldType {
   isChart      Boolean          @default(false)
   dailyPrices  GoldDailyPrice[]
   prices       GoldPrice[]
-  Comparison   Comparison?      @relation(fields: [comparisonId], references: [id])
+  comparison   Comparison?      @relation(fields: [comparisonId], references: [id])
 
   @@index([code])
   @@index([isActive])
@@ -120,37 +120,48 @@ model CrawlerLog {
 }
 
 model News {
-  id          Int       @id @default(autoincrement())
+  id          Int          @id @default(autoincrement())
   headlineEn  String
   headlineVi  String?
-  slugVi      String    @unique
-  slugEn      String    @unique
-  shortEn     String?   @db.Text
-  shortVi     String?   @db.Text
-  contentEn   String    @db.Text
-  contentVi   String?   @db.Text
-  detailLink  String    @unique
-  pageCited   String // 'Kitco', 'DailyForex', 'MarketWatch'
-  hash        String    @unique
-  active      Boolean   @default(false) // false = not published, true = published
+  slugVi      String       @unique
+  slugEn      String       @unique
+  shortEn     String?      @db.Text
+  shortVi     String?      @db.Text
+  contentEn   String       @db.Text
+  contentVi   String?      @db.Text
+  detailLink  String       @unique
+  pageCited   String // 'VnExpress', 'Cafef' (domestic) or 'Kitco', 'DailyForex', 'MarketWatch' (international)
+  hash        String       @unique
+  active      Boolean      @default(false) // false = not published, true = published
+  category    NewsCategory @default(INTERNATIONAL)
+  tags        String[]     @default([]) // Empty for INTERNATIONAL
+  keywords    String[]     @default([]) // Empty for INTERNATIONAL
+  metaDesc    String? // NULL for INTERNATIONAL
+  author      String?
+  featured    Boolean      @default(false)
+  views       Int          @default(0)
   publishedAt DateTime? // Original publication date
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime?    @updatedAt
 
   @@index([pageCited])
   @@index([active])
+  @@index([category])
   @@index([createdAt])
+  @@index([slugVi])
+  @@index([featured])
   @@map("news")
 }
 
 model Comparison {
-  id          Int      @id @default(autoincrement())
-  code        String   @unique
+  id          Int       @id @default(autoincrement())
+  code        String    @unique
   name        String
   description String?
-  order       Int      @default(0)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  order       Int       @default(0)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime? @updatedAt
 
   goldTypes GoldType[]
 
@@ -158,4 +169,9 @@ model Comparison {
   @@index([isActive])
   @@index([order])
   @@map("comparisons")
+}
+
+enum NewsCategory {
+  DOMESTIC // Vietnamese articles with detail pages
+  INTERNATIONAL // Crawled from external sources
 }
