@@ -140,7 +140,7 @@ export async function crawlDailyForex(): Promise<NewsArticle[]> {
     const articles: NewsArticle[] = []
 
     // Find most-recent articles (top 5)
-    const articleElements = $('.most-recent .article-title, .most-recent h3, .most-recent h2').slice(0, 5)
+    const articleElements = $('.most-recent .article-title, .most-recent h3, .article-list .article').slice(0, 5)
 
     if (articleElements.length === 0) {
       console.log('⚠️  [DailyForex] No articles found with selector, trying alternative...')
