@@ -36,7 +36,7 @@ export class BTMCCrawler {
         let collected = 0;
 
         for (const item of rows) {
-            if (collected >= 7) break;
+            if (collected >= 8) break;
 
             const row = Number(item['@row']);
             if (!row) continue;
