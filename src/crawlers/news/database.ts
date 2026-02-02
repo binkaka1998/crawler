@@ -52,7 +52,7 @@ export async function saveArticles(articles: NewsArticle[]): Promise<SaveStats> 
           detailLink: article.detailLink,
           pageCited: article.pageCited,
           hash: article.hash,
-          active: false, // Inactive by default (needs translation)
+          active: true, // Inactive by default (needs translation)
         }
       })
 
