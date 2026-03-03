@@ -1,0 +1,29 @@
+name: Debug BTMC API
+
+on:
+  workflow_dispatch:
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Show runner public IP
+        run: |
+          echo "Runner public IP:"
+          curl ifconfig.me
+          echo ""
+          echo "DNS resolve:"
+          nslookup api.btmc.vn || true
+
+      - name: Test BTMC API (curl verbose)
+        run: |
+          curl -v --connect-timeout 10 --max-time 30 \
+          "http://api.btmc.vn/api/BTMCAPI/getpricebtmc?key=3kd8ub1llcg9t45hnoh8hmn7t5kc2v"
+
+      - name: Start interactive SSH session (tmate)
+        uses: mxschmitt/action-tmate@v3
