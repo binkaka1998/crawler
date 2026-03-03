@@ -3,7 +3,7 @@ name: Gold Price & News Crawler (Stable Scheduler)
 on:
   # Single, reliable scheduler
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '3-59/10 * * * *'
 
   # Manual trigger
   workflow_dispatch:
