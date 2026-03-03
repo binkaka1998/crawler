@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, {AxiosError} from 'axios';
 import { prisma } from '../../lib/prisma';
 import { buildDailyCode, normalizeGoldCode } from '../../util/utilFunctions';
 
@@ -10,6 +10,39 @@ export interface CrawledPrice {
     dailyCode: string;
 }
 
+async function fetchWithRetry(
+    url: string,
+    retries = 3,
+    timeout = 120000
+) {
+    let attempt = 0;
+
+    while (attempt < retries) {
+        try {
+            const response = await axios.get(url, { timeout });
+            return response.data;
+        } catch (error) {
+            const err = error as AxiosError;
+            attempt++;
+
+            // ❌ Không retry nếu là lỗi 4xx
+            if (err.response && err.response.status < 500) {
+                throw err;
+            }
+
+            if (attempt >= retries) {
+                throw err;
+            }
+
+            // exponential backoff
+            const delay = 2000 * attempt;
+            console.log(
+                `[BTMC] Retry ${attempt}/${retries} after ${delay}ms`
+            );
+            await new Promise((r) => setTimeout(r, delay));
+        }
+    }
+}
 export class BTMCCrawler {
     private storeCode = 'BTMC';
     private apiUrl =
@@ -19,8 +52,7 @@ export class BTMCCrawler {
         console.log('[BTMC] Fetching XML data...');
 
         const prices: CrawledPrice[] = [];
-        const xml = await axios.get(this.apiUrl, { timeout: 30000 });
-        const json = xml.data;
+        const json = await fetchWithRetry(this.apiUrl, 3, 120000);
 
         const rows = json?.DataList?.Data;
         if (!Array.isArray(rows)) return prices;
